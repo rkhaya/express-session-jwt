@@ -2,8 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import passport from "passport";
 import { prisma } from "../utils/prisma";
 import { hashPassword } from "../utils/password";
+import { generateTokens, storeRefreshToken } from "../middleware/jwtAuth";
+import { redisClient } from "../utils/redis";
 
-/** @desc Log in user */
 export const loginUser = (req: Request, res: Response, next: NextFunction) => {
   passport.authenticate("local", (err: any, user: any, info: any) => {
     if (err) return next(err);
@@ -14,13 +15,45 @@ export const loginUser = (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    req.login(user, (err) => {
-      if (err) return next(err);
+    req.login(user, async (err) => {
+      if (err) {
+        console.error("Login error:", err);
+        return next(err);
+      }
+
       const { id, email, username, role } = user;
-      res.json({
+      const { accessToken, refreshToken, jti } = generateTokens(id);
+      await storeRefreshToken(id, jti);
+
+      if (req.sessionID) {
+        await redisClient.sAdd(`userSessions:${id}`, req.sessionID);
+        console.log("Added session", req.sessionID, "for user", id);
+      } else {
+        console.log(
+          "No sessionID found — ensure express-session is configured"
+        );
+      }
+
+      res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 15 * 60 * 1000,
+      });
+
+      res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.json({
         success: true,
         message: "Logged in successfully",
-        user: { id, email, username, role },
+        user: { email, username, role },
       });
     });
   })(req, res, next);
