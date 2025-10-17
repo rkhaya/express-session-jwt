@@ -1,8 +1,5 @@
 import express from "express";
-import {
-  authJWTMiddleware,
-  isAuthenticated,
-} from "../middleware/isAuthenticated";
+import { isAuthenticated } from "../middleware/isAuthenticated";
 import {
   loginUser,
   signupUser,

@@ -27,11 +27,6 @@ export const loginUser = (req: Request, res: Response, next: NextFunction) => {
 
       if (req.sessionID) {
         await redisClient.sAdd(`userSessions:${id}`, req.sessionID);
-        console.log("Added session", req.sessionID, "for user", id);
-      } else {
-        console.log(
-          "No sessionID found — ensure express-session is configured"
-        );
       }
 
       res.cookie("accessToken", accessToken, {

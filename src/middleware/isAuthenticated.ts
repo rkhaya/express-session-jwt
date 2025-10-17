@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "./jwtAuth";
-import { prisma } from "../utils/prisma";
 
 export interface TokenPayload {
   userId: string;
